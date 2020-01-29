@@ -1,0 +1,43 @@
+# nodejs binary
+%__nodejs %{_bindir}/node
+
+# nodejs library directory
+%nodejs_sitelib %{_prefix}/lib/node_modules
+
+#arch specific library directory
+#for future-proofing only; we don't do multilib
+%nodejs_sitearch %{nodejs_sitelib}
+
+# currently installed nodejs version
+%nodejs_version %(%{__nodejs} -v | sed s/v//)
+
+# macro to filter unwanted provides from Node.js binary native modules
+%nodejs_default_filter %{expand: \
+%global __provides_exclude_from ^%{nodejs_sitearch}/.*\\.node$
+}
+
+# no-op macro to allow spec compatibility with EPEL
+%nodejs_find_provides_and_requires \
+%if 0%{?suse_version} <= 1110 \
+%global _use_internal_dependency_generator 0 \
+%global __find_provides %{_prefix}/lib/rpm/nodejs.prov \
+%global __find_requires %{_prefix}/lib/rpm/nodejs.req \
+%nodejs_default_filter \
+%else \
+%nil \
+%endif
+
+%nodejs_prep nodejs-packaging --prep
+%nodejs_mkdir %nil
+%nodejs_copy %nil
+%nodejs_build %nil
+%nodejs_install nodejs-packaging --install
+%nodejs_clean nodejs-packaging --clean
+%nodejs_filelist nodejs-packaging --filelist
+
+%nodejs_symlink_deps %{_prefix}/lib/rpm/nodejs-symlink-deps
+%nodejs_fixdep %{_prefix}/lib/rpm/nodejs-fixdep
+%nodejs_check %{_prefix}/lib/rpm/nodejs-check
+
+#compat opensuse
+%nodejs_modulesdir %{nodejs_sitelib}

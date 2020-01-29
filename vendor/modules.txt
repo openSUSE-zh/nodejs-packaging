@@ -1,0 +1,6 @@
+# github.com/bitly/go-simplejson v0.5.0
+github.com/bitly/go-simplejson
+# github.com/marguerite/util v0.0.0-20191130060341-008b03ab3d6b
+github.com/marguerite/util/dir
+github.com/marguerite/util
+github.com/marguerite/util/slice
