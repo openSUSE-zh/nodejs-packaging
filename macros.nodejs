@@ -32,7 +32,7 @@
 %nodejs_copy %nil
 %nodejs_build %nil
 %nodejs_install nodejs-packaging --install
-%nodejs_clean nodejs-packaging --clean
+%nodejs_clean %nil
 %nodejs_filelist nodejs-packaging --filelist
 
 %nodejs_symlink_deps %{_prefix}/lib/rpm/nodejs-symlink-deps

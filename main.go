@@ -27,10 +27,9 @@ var (
 )
 
 func main() {
-	var prep, inst, clean, filelist bool
+	var prep, inst, filelist bool
 	flag.BoolVar(&prep, "prep", false, "do pre-build checks")
 	flag.BoolVar(&inst, "install", false, "install modules from json")
-	flag.BoolVar(&clean, "clean", false, "clean the build environment")
 	flag.BoolVar(&filelist, "filelist", false, "generate filelist")
 	flag.Parse()
 
@@ -54,6 +53,10 @@ func main() {
 
 	if inst {
 		install(json, SiteLib)
+	}
+
+	if filelist {
+		list()
 	}
 }
 
@@ -160,6 +163,19 @@ func postinstall(d string) {
 		}
 		// check bower
 	}
+}
+
+func list() {
+	d, _ := dir.Ls(SiteLib, "dir")
+	f, _ := dir.Ls(SiteLib)
+	var s string
+	for _, v := range d {
+		s += "%dir " + strings.TrimPrefix(v, DestDir) + "\n"
+	}
+	for _, v := range f {
+		s += strings.TrimPrefix(v, DestDir) + "\n"
+	}
+	ioutil.WriteFile(filepath.Join(SourceDir, "files.txt"), []byte(s), 0644)
 }
 
 func unpack(source, target string) error {
