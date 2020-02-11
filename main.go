@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -93,15 +94,71 @@ func install(json *simplejson.Json, directory string) {
 		s := strings.Split(k, ":")
 		f := s[0] + "-" + s[1] + ".tgz"
 		t := filepath.Join(directory, s[0]+"@"+s[1])
-		fmt.Printf("Creating directory %s\n", t)
+		//fmt.Printf("Creating directory %s\n", t)
 		os.MkdirAll(t, os.ModePerm)
 		source := filepath.Join(SourceDir, f)
-		fmt.Printf("Unpacking %s to %s\n", source, t)
+		//fmt.Printf("Unpacking %s to %s\n", source, t)
 		err := unpack(source, t)
 		if err != nil {
 			fmt.Println(err)
 		}
+		postinstall(t)
 		install(json.Get(k), filepath.Join(t, "node_modules"))
+	}
+}
+
+func postinstall(d string) {
+	files, _ := dir.Ls(d)
+	for _, f := range files {
+		if strings.HasSuffix(f, ".gyp") {
+			if _, err := os.Stat("/usr/bin/npm"); os.IsNotExist(err) {
+				fmt.Printf("Your package contains node module %s which needs npm to build, but no BuildRequires: npm nodejs-devel in specfile.\n", filepath.Base(d))
+				continue
+			}
+			cmd := exec.Command("/usr/bin/npm", "build", d)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			err := cmd.Run()
+			if err != nil {
+				panic(err)
+			}
+		}
+		// remove build temporary file
+		removed := false
+		re := regexp.MustCompile(`\.(c|h|cc|cpp|o|gyp|gypi)$|Makefile$|build\/Release\/obj\.target`)
+		if re.MatchString(f) {
+			fmt.Printf("Removing temporary build file %s.\n", f)
+			err := os.Remove(f)
+			if err != nil {
+				fmt.Printf("Failed to remove %s: %v\n", f, err)
+			}
+			removed = true
+		}
+		// fix binary permission
+		if !removed && (strings.Contains(f, "/bin/") || strings.HasSuffix(f, ".node")) {
+			fmt.Printf("Fixing permission %s.\n", f)
+			err := os.Chmod(f, 0755)
+			if err != nil {
+				fmt.Printf("Set permission 0755 on %s failed: %v.\n", f, err)
+			}
+		}
+		// remove empty directory
+		if i, err := os.Stat(f); i.IsDir() && err == nil {
+			f1, err := os.Open(f)
+			if err != nil {
+				fmt.Printf("Failed to open %s: %v\n", f, err)
+			}
+			defer f1.Close()
+			_, err = f1.Readdirnames(1)
+			if err == io.EOF {
+				fmt.Printf("Removing empty directory %s.\n", f)
+				err = os.Remove(f)
+				if err != nil {
+					fmt.Printf("Failed to remove %s: %v\n", f, err)
+				}
+			}
+		}
+		// check bower
 	}
 }
 
@@ -128,6 +185,10 @@ func unpack(source, target string) error {
 		}
 
 		name := strings.TrimPrefix(header.Name, "package/")
+		if skipName(name) {
+			continue
+		}
+
 		if strings.Contains(name, "/") {
 			p := filepath.Join(target, filepath.Dir(name))
 			if _, err := os.Stat(p); os.IsNotExist(err) {
@@ -159,4 +220,13 @@ func unpack(source, target string) error {
 		}
 	}
 	return nil
+}
+
+func skipName(n string) bool {
+	re := regexp.MustCompile(`^\..*$|.*~$|\.(bat|cmd|orig|bak|sln|njsproj|exe)$|example(s)?(\.js)?$|benchmark(s)?(\.js)?$|sample(s)?(\.js)?$|test(s)?(\.js)?$|_test\.|coverage|windows|appveyor\.yml|browser$`)
+	if re.MatchString(n) {
+		//fmt.Printf("%s is Linux unneeded, temporary, project management, or test/sample file, skipped.\n", n)
+		return false
+	}
+	return true
 }
