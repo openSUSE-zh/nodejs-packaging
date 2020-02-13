@@ -20,20 +20,20 @@
 %nodejs_find_provides_and_requires \
 %if 0%{?suse_version} <= 1110 \
 %global _use_internal_dependency_generator 0 \
-%global __find_provides %{_prefix}/lib/rpm/nodejs.prov \
-%global __find_requires %{_prefix}/lib/rpm/nodejs.req \
+%global __find_provides %{_prefix}/lib/rpm/nodejs-provide \
+%global __find_requires %{_prefix}/lib/rpm/nodejs-require \
 %nodejs_default_filter \
 %else \
 %nil \
 %endif
 
-%nodejs_prep nodejs-packaging --prep
+%nodejs_prep %{_prefix}/lib/rpm/nodejs-packaging --prep
 %nodejs_mkdir %nil
 %nodejs_copy %nil
 %nodejs_build %nil
-%nodejs_install nodejs-packaging --install
+%nodejs_install %{_prefix}/lib/rpm/nodejs-packaging --install
 %nodejs_clean %nil
-%nodejs_filelist nodejs-packaging --filelist
+%nodejs_filelist %{_prefix}/lib/rpm/nodejs-packaging --filelist
 
 %nodejs_symlink_deps %{_prefix}/lib/rpm/nodejs-symlink-deps
 %nodejs_fixdep %{_prefix}/lib/rpm/nodejs-fixdep

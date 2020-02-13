@@ -20,11 +20,19 @@ import (
 
 //Prefix where the build locates
 var (
-	Prefix    = "/home/marguerite/home:MargueriteSu:branches:devel:languages:nodejs/gulp"
-	SourceDir = Prefix
-	DestDir   = Prefix
-	SiteLib   = filepath.Join(DestDir, "/usr/lib/node_modules")
+	Prefix    = "/home/abuild/rpmbuild"
+	SourceDir = filepath.Join(Prefix, "SOURCES")
 )
+
+func destDir() string {
+	d := filepath.Join(Prefix, "BUILDROOT")
+	f, _ := dir.Ls(d, "dir")
+	return f[1]
+}
+
+func siteLib() string {
+	return filepath.Join(destDir(), "/usr/lib/node_modules")
+}
 
 func main() {
 	var prep, inst, filelist bool
@@ -52,7 +60,7 @@ func main() {
 	}
 
 	if inst {
-		install(json, SiteLib)
+		install(json, siteLib())
 	}
 
 	if filelist {
@@ -90,24 +98,25 @@ func chkSourceTarballs(json *simplejson.Json, notFound map[string]struct{}) {
 }
 
 func install(json *simplejson.Json, directory string) {
-	if _, err := os.Stat(SiteLib); os.IsNotExist(err) {
-		os.MkdirAll(SiteLib, os.ModePerm)
+	lib := siteLib()
+	if _, err := os.Stat(lib); os.IsNotExist(err) {
+		os.MkdirAll(lib, os.ModePerm)
 	}
 	for k := range json.MustMap() {
 		s := strings.Split(k, ":")
 		f := s[0] + "-" + s[1] + ".tgz"
 		t := filepath.Join(directory, s[0]+"@"+s[1])
-		//fmt.Printf("Creating directory %s\n", t)
+		fmt.Printf("Creating directory %s\n", t)
 		os.MkdirAll(t, os.ModePerm)
 		source := filepath.Join(SourceDir, f)
-		//fmt.Printf("Unpacking %s to %s\n", source, t)
+		fmt.Printf("Unpacking %s to %s\n", source, t)
 		err := unpack(source, t)
 		if err != nil {
 			fmt.Println(err)
 		}
-		postinstall(t)
 		install(json.Get(k), filepath.Join(t, "node_modules"))
 	}
+	postinstall(lib)
 }
 
 func postinstall(d string) {
@@ -118,7 +127,7 @@ func postinstall(d string) {
 				fmt.Printf("Your package contains node module %s which needs npm to build, but no BuildRequires: npm nodejs-devel in specfile.\n", filepath.Base(d))
 				continue
 			}
-			cmd := exec.Command("/usr/bin/npm", "build", d)
+			cmd := exec.Command("/usr/bin/npm", "build", filepath.Dir(f))
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
 			err := cmd.Run()
@@ -127,7 +136,6 @@ func postinstall(d string) {
 			}
 		}
 		// remove build temporary file
-		removed := false
 		re := regexp.MustCompile(`\.(c|h|cc|cpp|o|gyp|gypi)$|Makefile$|build\/Release\/obj\.target`)
 		if re.MatchString(f) {
 			fmt.Printf("Removing temporary build file %s.\n", f)
@@ -135,10 +143,10 @@ func postinstall(d string) {
 			if err != nil {
 				fmt.Printf("Failed to remove %s: %v\n", f, err)
 			}
-			removed = true
+			continue
 		}
 		// fix binary permission
-		if !removed && (strings.Contains(f, "/bin/") || strings.HasSuffix(f, ".node")) {
+		if strings.Contains(f, "/bin/") || strings.HasSuffix(f, ".node") {
 			fmt.Printf("Fixing permission %s.\n", f)
 			err := os.Chmod(f, 0755)
 			if err != nil {
@@ -166,14 +174,16 @@ func postinstall(d string) {
 }
 
 func list() {
-	d, _ := dir.Ls(SiteLib, "dir")
-	f, _ := dir.Ls(SiteLib)
+	lib := siteLib()
+	dest := destDir()
+	d, _ := dir.Ls(lib, "dir")
+	f, _ := dir.Ls(lib)
 	var s string
 	for _, v := range d {
-		s += "%dir " + strings.TrimPrefix(v, DestDir) + "\n"
+		s += "%dir " + strings.TrimPrefix(v, dest) + "\n"
 	}
 	for _, v := range f {
-		s += strings.TrimPrefix(v, DestDir) + "\n"
+		s += strings.TrimPrefix(v, dest) + "\n"
 	}
 	ioutil.WriteFile(filepath.Join(SourceDir, "files.txt"), []byte(s), 0644)
 }
@@ -239,10 +249,10 @@ func unpack(source, target string) error {
 }
 
 func skipName(n string) bool {
-	re := regexp.MustCompile(`^\..*$|.*~$|\.(bat|cmd|orig|bak|sln|njsproj|exe)$|example(s)?(\.js)?$|benchmark(s)?(\.js)?$|sample(s)?(\.js)?$|test(s)?(\.js)?$|_test\.|coverage|windows|appveyor\.yml|browser$`)
+	re := regexp.MustCompile(`\..*$|.*~$|\.(bat|cmd|orig|bak|sln|njsproj|exe)$|example(s)?(\.js)?$|benchmark(s)?(\.js)?$|sample(s)?(\.js)?$|test(s)?(\.js)?$|_test\.|coverage|windows|appveyor\.yml|browser$|node_modules`)
 	if re.MatchString(n) {
-		//fmt.Printf("%s is Linux unneeded, temporary, project management, or test/sample file, skipped.\n", n)
-		return false
+		fmt.Printf("%s is Linux unneeded, temporary, project management, or test/sample file, skipped.\n", n)
+		return true
 	}
-	return true
+	return false
 }
