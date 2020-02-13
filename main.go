@@ -137,10 +137,10 @@ func postinstall(d string) {
 			}
 		}
 		// remove build temporary file
-		re := regexp.MustCompile(`\.(c|h|cc|cpp|o|gyp|gypi)$|Makefile$|build\/Release\/obj\.target`)
+		re := regexp.MustCompile(`\.(c|h|cc|cpp|o|gyp|gypi|target\.mk|deps)$|Makefile$|build\/Release\/obj\.target`)
 		if re.MatchString(f) {
 			fmt.Printf("Removing temporary build file %s.\n", f)
-			err := os.Remove(f)
+			err := os.RemoveAll(f)
 			if err != nil {
 				fmt.Printf("Failed to remove %s: %v\n", f, err)
 			}
@@ -175,7 +175,8 @@ func postinstall(d string) {
 
 		buffer := make([]byte, 512)
 		_, err = f1.Read(buffer)
-		if err != nil {
+		// skip zero-byte files
+		if err != nil && err != io.EOF {
 			fmt.Printf("Failed to read the first 512 bytes of %s: %v.\n", f, err)
 		}
 
@@ -266,7 +267,7 @@ func unpack(source, target string) error {
 }
 
 func skipName(n string) bool {
-	re := regexp.MustCompile(`\..*$|.*~$|\.(bat|cmd|orig|bak|sln|njsproj|exe)$|example(s)?(\.js)?$|benchmark(s)?(\.js)?$|sample(s)?(\.js)?$|test(s)?(\.js)?$|_test\.|coverage|windows|appveyor\.yml|browser$|node_modules`)
+	re := regexp.MustCompile(`(\/|^)\..*$|~$|\.(bat|cmd|orig|bak|sln|njsproj|exe)$|example(s)?(\.js)?|benchmark(s)?(\.js)?|sample(s)?(\.js)?|test(s)?(\.)?(js)?|coverage|windows|appveyor\.yml|browser(\/)?|node_modules`)
 	if re.MatchString(n) {
 		fmt.Printf("%s is Linux unneeded, temporary, project management, or test/sample file, skipped.\n", n)
 		return true
