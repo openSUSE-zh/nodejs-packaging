@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -124,7 +125,7 @@ func postinstall(d string) {
 	for _, f := range files {
 		if strings.HasSuffix(f, ".gyp") {
 			if _, err := os.Stat("/usr/bin/npm"); os.IsNotExist(err) {
-				fmt.Printf("Your package contains node module %s which needs npm to build, but no BuildRequires: npm nodejs-devel in specfile.\n", filepath.Base(d))
+				fmt.Printf("Your package contains node module %s which needs npm to build, but no BuildRequires: npm nodejs-devel gcc-c++ in specfile.\n", filepath.Base(d))
 				continue
 			}
 			cmd := exec.Command("/usr/bin/npm", "build", filepath.Dir(f))
@@ -132,7 +133,7 @@ func postinstall(d string) {
 			cmd.Stderr = os.Stderr
 			err := cmd.Run()
 			if err != nil {
-				panic(err)
+				os.Exit(1)
 			}
 		}
 		// remove build temporary file
@@ -145,28 +146,44 @@ func postinstall(d string) {
 			}
 			continue
 		}
-		// fix binary permission
-		if strings.Contains(f, "/bin/") || strings.HasSuffix(f, ".node") {
-			fmt.Printf("Fixing permission %s.\n", f)
-			err := os.Chmod(f, 0755)
-			if err != nil {
-				fmt.Printf("Set permission 0755 on %s failed: %v.\n", f, err)
-			}
+
+		f1, err := os.Open(f)
+		if err != nil {
+			fmt.Printf("Failed to open %s: %v\n", f, err)
 		}
+		defer f1.Close()
+		f2, _ := f1.Stat()
+
 		// remove empty directory
-		if i, err := os.Stat(f); i.IsDir() && err == nil {
-			f1, err := os.Open(f)
-			if err != nil {
-				fmt.Printf("Failed to open %s: %v\n", f, err)
-			}
-			defer f1.Close()
-			_, err = f1.Readdirnames(1)
+		if f2.IsDir() {
+			_, err := f1.Readdirnames(1)
 			if err == io.EOF {
 				fmt.Printf("Removing empty directory %s.\n", f)
 				err = os.Remove(f)
 				if err != nil {
-					fmt.Printf("Failed to remove %s: %v\n", f, err)
+					fmt.Printf("Failed to remove %s: %v.\n", f, err)
 				}
+			}
+			continue
+		}
+
+		// fix binary permission
+		if strings.Contains(f, "/bin") || strings.HasSuffix(f, ".node") {
+			// no need to fix file already binary
+			continue
+		}
+
+		buffer := make([]byte, 512)
+		_, err = f1.Read(buffer)
+		if err != nil {
+			fmt.Printf("Failed to read the first 512 bytes of %s: %v.\n", f, err)
+		}
+
+		if http.DetectContentType(buffer) != "application/octet-stream" && strings.Contains(f2.Mode().String(), "x") {
+			fmt.Printf("Fixing permission %s.\n", f)
+			err := os.Chmod(f, 0644)
+			if err != nil {
+				fmt.Printf("Set permission 0755 on %s failed: %v.\n", f, err)
 			}
 		}
 		// check bower
