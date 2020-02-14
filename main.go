@@ -151,7 +151,6 @@ func postinstall(d string) {
 		if err != nil {
 			fmt.Printf("Failed to open %s: %v\n", f, err)
 		}
-		defer f1.Close()
 		f2, _ := f1.Stat()
 
 		// remove empty directory
@@ -164,20 +163,26 @@ func postinstall(d string) {
 					fmt.Printf("Failed to remove %s: %v.\n", f, err)
 				}
 			}
+			f1.Close()
 			continue
 		}
 
 		// fix binary permission
 		if strings.Contains(f, "/bin") || strings.HasSuffix(f, ".node") {
 			// no need to fix file already binary
+			f1.Close()
 			continue
 		}
 
 		buffer := make([]byte, 512)
 		_, err = f1.Read(buffer)
-		// skip zero-byte files
-		if err != nil && err != io.EOF {
-			fmt.Printf("Failed to read the first 512 bytes of %s: %v.\n", f, err)
+		if err != nil {
+			// skip zero-byte files
+			if err != io.EOF {
+				fmt.Printf("Failed to read the first 512 bytes of %s: %v.\n", f, err)
+			}
+			f1.Close()
+			continue
 		}
 
 		if http.DetectContentType(buffer) != "application/octet-stream" && strings.Contains(f2.Mode().String(), "x") {
@@ -187,6 +192,7 @@ func postinstall(d string) {
 				fmt.Printf("Set permission 0755 on %s failed: %v.\n", f, err)
 			}
 		}
+		f1.Close()
 		// check bower
 	}
 }
