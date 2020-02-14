@@ -4,3 +4,5 @@ github.com/bitly/go-simplejson
 github.com/marguerite/util/dir
 github.com/marguerite/util
 github.com/marguerite/util/slice
+# github.com/openSUSE-zh/node-semver v0.0.0-20200209091312-556591635086
+github.com/openSUSE-zh/node-semver
