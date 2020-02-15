@@ -9,5 +9,5 @@ github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/marguerite/util v0.0.0-20191130060341-008b03ab3d6b h1:uQrgfbLIO25PN7mTsM8KZ7kArnqoKRMz4GEd/xLl44M=
 github.com/marguerite/util v0.0.0-20191130060341-008b03ab3d6b/go.mod h1:O9sK+ae5egCLsW7GODcULahgSNJ5P3XNSPgccfyr87E=
-github.com/openSUSE-zh/node-semver v0.0.0-20200209091312-556591635086 h1:srAScOpFIAhopuH+Dko7j942+LRP+HJz6OfXxJ69dQQ=
-github.com/openSUSE-zh/node-semver v0.0.0-20200209091312-556591635086/go.mod h1:ay23r6K1NqArGWhT31Fg6mqp+2/v29Wyn3UZwLiqvtk=
+github.com/openSUSE-zh/node-semver v0.0.0-20200214151914-1018a6bff0ca h1:stSnVFO51tvPi//2zRebtyd6FUz8leJ2NjX8H/MbQA4=
+github.com/openSUSE-zh/node-semver v0.0.0-20200214151914-1018a6bff0ca/go.mod h1:ay23r6K1NqArGWhT31Fg6mqp+2/v29Wyn3UZwLiqvtk=
